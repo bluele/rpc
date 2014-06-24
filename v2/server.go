@@ -92,33 +92,26 @@ func (s *Server) HasMethod(method string) bool {
 	return false
 }
 
-func (s *Server) ServeRequest(contentType string, r io.Reader) {
+func (s *Server) ServeRequest(contentType string, r io.Reader) error {
 	codec := s.codecs[strings.ToLower(contentType)]
 	if codec == nil {
-		// WriteError(w, 415, "rpc: unrecognized Content-Type: "+contentType)
-		return
+		return errors.New("rpc: unrecognized Content-Type: "+contentType)
 	}
 	// Create a new codec request.
 	codecReq := codec.NewRequest(r)
 	// Get service method to be called.
 	method, errMethod := codecReq.Method()
 	if errMethod != nil {
-		// codecReq.WriteError(w, 400, errMethod)
-		fmt.Println(errMethod)
-		return
+		return errMethod
 	}
 	serviceSpec, methodSpec, errGet := s.services.get(method)
 	if errGet != nil {
-		// codecReq.WriteError(w, 400, errGet)
-		fmt.Println(errGet)
-		return
+		return errGet
 	}
 	// Decode the args.
 	args := reflect.New(methodSpec.argsType)
 	if errRead := codecReq.ReadRequest(args.Interface()); errRead != nil {
-		// codecReq.WriteError(w, 400, errRead)
-		fmt.Println(errRead)
-		return
+		return errRead
 	}
 	// Call the service method.
 	reply := reflect.New(methodSpec.replyType)
@@ -141,6 +134,7 @@ func (s *Server) ServeRequest(contentType string, r io.Reader) {
 		// codecReq.WriteResponse(w, reply.Interface())
 	} else {
 		// codecReq.WriteError(w, 400, errResult)
+		return errResult
 	}
 }
 
