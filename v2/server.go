@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"reflect"
 	"strings"
+	"errors"
 )
 
 // ----------------------------------------------------------------------------
@@ -133,9 +134,9 @@ func (s *Server) ServeRequest(contentType string, r io.Reader) error {
 	if errResult == nil {
 		// codecReq.WriteResponse(w, reply.Interface())
 	} else {
-		// codecReq.WriteError(w, 400, errResult)
 		return errResult
 	}
+	return nil
 }
 
 func WriteError(w http.ResponseWriter, status int, msg string) {
