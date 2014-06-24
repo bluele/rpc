@@ -76,12 +76,8 @@ type Codec struct {
 }
 
 // NewRequest returns a CodecRequest.
-func (c *Codec) NewRequest(r *http.Request) rpc.CodecRequest {
-	return newCodecRequest(r, c.encSel.Select(r))
-}
-
-func (c *Codec) NewRequestByReader(r io.Reader) rpc.CodecRequest {
-	return newCodecRequestByReader(r)
+func (c *Codec) NewRequest(r io.Reader) rpc.CodecRequest {
+	return newCodecRequest(r)
 }
 
 // ----------------------------------------------------------------------------
@@ -89,10 +85,9 @@ func (c *Codec) NewRequestByReader(r io.Reader) rpc.CodecRequest {
 // ----------------------------------------------------------------------------
 
 // newCodecRequest returns a new CodecRequest.
-func newCodecRequest(r *http.Request, encoder rpc.Encoder) rpc.CodecRequest {
-	// Decode the request body and check if RPC method is valid.
+func newCodecRequest(r io.Reader) rpc.CodecRequest {
 	req := new(serverRequest)
-	err := json.NewDecoder(r.Body).Decode(req)
+	err := json.NewDecoder(r).Decode(req)
 	if err != nil {
 		err = &Error{
 			Code:    E_PARSE,
@@ -107,8 +102,7 @@ func newCodecRequest(r *http.Request, encoder rpc.Encoder) rpc.CodecRequest {
 			Data:    req,
 		}
 	}
-	r.Body.Close()
-	return &CodecRequest{request: req, err: err, encoder: encoder}
+	return &CodecRequest{request: req, err: err, encoder: rpc.DefaultEncoder}
 }
 
 // CodecRequest decodes and encodes a single request.
@@ -149,26 +143,6 @@ func (c *CodecRequest) ReadRequest(args interface{}) error {
 		}
 	}
 	return c.err
-}
-
-func newCodecRequestByReader(r io.Reader) rpc.CodecRequest {
-	req := new(serverRequest)
-	err := json.NewDecoder(r).Decode(req)
-	if err != nil {
-		err = &Error{
-			Code:    E_PARSE,
-			Message: err.Error(),
-			Data:    req,
-		}
-	}
-	if req.Version != Version {
-		err = &Error{
-			Code:    E_INVALID_REQ,
-			Message: "jsonrpc must be " + Version,
-			Data:    req,
-		}
-	}
-	return &CodecRequest{request: req, err: err, encoder: rpc.DefaultEncoder}
 }
 
 // WriteResponse encodes the response and writes it to the ResponseWriter.

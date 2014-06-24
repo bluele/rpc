@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"github.com/bluele/rpc/v2"
 	"github.com/bluele/rpc/v2/json2"
-	"io"
 	"log"
 	"strings"
 )
@@ -24,7 +23,7 @@ type IncrReq struct {
 }
 
 // Notification.
-func (c *Counter) Incr(r io.Reader, req *IncrReq, res *json2.EmptyResponse) error {
+func (c *Counter) Incr(req *IncrReq, res *json2.EmptyResponse) error {
 	log.Printf("<- Incr %+v", *req)
 	c.Count += req.Delta
 	return nil
@@ -33,7 +32,7 @@ func (c *Counter) Incr(r io.Reader, req *IncrReq, res *json2.EmptyResponse) erro
 type GetReq struct {
 }
 
-func (c *Counter) Get(r io.Reader, req *GetReq, res *Counter) error {
+func (c *Counter) Get(req *GetReq, res *Counter) error {
 	log.Printf("<- Get %+v", *req)
 	*res = *c
 	log.Printf("-> %v", *res)
@@ -41,15 +40,21 @@ func (c *Counter) Get(r io.Reader, req *GetReq, res *Counter) error {
 }
 
 func main() {
-	testJson := `
+	incrJson := `
 {"jsonrpc":"2.0", "method":"Counter.Incr", "params": {"delta": 10}, "id": "1"}
+`
+getJson := `
+{"jsonrpc":"2.0", "method":"Counter.Get", "params": {}, "id": "1"}
 `
 
 	//address := flag.String("address", ":65534", "")
 	s := rpc.NewServer()
 	s.RegisterCodec(json2.NewCustomCodec(&rpc.CompressionSelector{}), "application/json")
 	fmt.Println(s.RegisterService(new(Counter), ""))
-	s.ServeMessage("application/json", strings.NewReader(testJson))
+	for i := 0; i < 5; i++ {
+			s.ServeRequest("application/json", strings.NewReader(incrJson))
+	}
+	s.ServeRequest("application/json", strings.NewReader(getJson))	
 	/*
 		http.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir("./"))))
 		http.Handle("/jsonrpc/", s)
