@@ -9,7 +9,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/gorilla/rpc/v2"
+	"github.com/bluele/rpc/v2"
+	"io"
 )
 
 var null = json.RawMessage([]byte("null"))
@@ -79,6 +80,10 @@ func (c *Codec) NewRequest(r *http.Request) rpc.CodecRequest {
 	return newCodecRequest(r, c.encSel.Select(r))
 }
 
+func (c *Codec) NewRequestByReader(r io.Reader) rpc.CodecRequest {
+	return newCodecRequestByReader(r)
+}
+
 // ----------------------------------------------------------------------------
 // CodecRequest
 // ----------------------------------------------------------------------------
@@ -144,6 +149,26 @@ func (c *CodecRequest) ReadRequest(args interface{}) error {
 		}
 	}
 	return c.err
+}
+
+func newCodecRequestByReader(r io.Reader) rpc.CodecRequest {
+	req := new(serverRequest)
+	err := json.NewDecoder(r).Decode(req)
+	if err != nil {
+		err = &Error{
+			Code:    E_PARSE,
+			Message: err.Error(),
+			Data:    req,
+		}
+	}
+	if req.Version != Version {
+		err = &Error{
+			Code:    E_INVALID_REQ,
+			Message: "jsonrpc must be " + Version,
+			Data:    req,
+		}
+	}
+	return &CodecRequest{request: req, err: err, encoder: rpc.DefaultEncoder}
 }
 
 // WriteResponse encodes the response and writes it to the ResponseWriter.

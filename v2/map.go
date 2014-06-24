@@ -80,10 +80,12 @@ func (m *serviceMap) register(rcvr interface{}, name string) error {
 			continue
 		}
 		// First argument must be a pointer and must be http.Request.
+		/*
 		reqType := mtype.In(1)
 		if reqType.Kind() != reflect.Ptr || reqType.Elem() != typeOfRequest {
 			continue
 		}
+		*/
 		// Second argument must be a pointer and must be exported.
 		args := mtype.In(2)
 		if args.Kind() != reflect.Ptr || !isExportedOrBuiltin(args) {

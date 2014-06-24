@@ -6,12 +6,13 @@
 package main
 
 import (
-	"flag"
+	//"flag"
+	"fmt"
+	"github.com/bluele/rpc/v2"
+	"github.com/bluele/rpc/v2/json2"
+	"io"
 	"log"
-	"net/http"
-
-	"github.com/gorilla/rpc/v2"
-	"github.com/gorilla/rpc/v2/json2"
+	"strings"
 )
 
 type Counter struct {
@@ -23,7 +24,7 @@ type IncrReq struct {
 }
 
 // Notification.
-func (c *Counter) Incr(r *http.Request, req *IncrReq, res *json2.EmptyResponse) error {
+func (c *Counter) Incr(r io.Reader, req *IncrReq, res *json2.EmptyResponse) error {
 	log.Printf("<- Incr %+v", *req)
 	c.Count += req.Delta
 	return nil
@@ -32,7 +33,7 @@ func (c *Counter) Incr(r *http.Request, req *IncrReq, res *json2.EmptyResponse) 
 type GetReq struct {
 }
 
-func (c *Counter) Get(r *http.Request, req *GetReq, res *Counter) error {
+func (c *Counter) Get(r io.Reader, req *GetReq, res *Counter) error {
 	log.Printf("<- Get %+v", *req)
 	*res = *c
 	log.Printf("-> %v", *res)
@@ -40,11 +41,18 @@ func (c *Counter) Get(r *http.Request, req *GetReq, res *Counter) error {
 }
 
 func main() {
-	address := flag.String("address", ":65534", "")
+	testJson := `
+{"jsonrpc":"2.0", "method":"Counter.Incr", "params": {"delta": 10}, "id": "1"}
+`
+
+	//address := flag.String("address", ":65534", "")
 	s := rpc.NewServer()
 	s.RegisterCodec(json2.NewCustomCodec(&rpc.CompressionSelector{}), "application/json")
-	s.RegisterService(new(Counter), "")
-	http.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir("./"))))
-	http.Handle("/jsonrpc/", s)
-	log.Fatal(http.ListenAndServe(*address, nil))
+	fmt.Println(s.RegisterService(new(Counter), ""))
+	s.ServeMessage("application/json", strings.NewReader(testJson))
+	/*
+		http.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir("./"))))
+		http.Handle("/jsonrpc/", s)
+		log.Fatal(http.ListenAndServe(*address, nil))
+	*/
 }
